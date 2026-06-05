@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Smart Environment Monitor</title>
+
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+
+<style>
+
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:'Segoe UI',sans-serif;
+}
+
+body{
+    background:#0f172a;
+    color:white;
+    min-height:100vh;
+    padding:20px;
+}
+
+.container{
+    max-width:1200px;
+    margin:auto;
+}
+
+.header{
+    text-align:center;
+    margin-bottom:30px;
+}
+
+.header h1{
+    font-size:2.5rem;
+}
+
+.header p{
+    color:#94a3b8;
+    margin-top:10px;
+}
+
+.grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(250px,1fr));
+    gap:20px;
+}
+
+.card{
+    background:#1e293b;
+    padding:25px;
+    border-radius:20px;
+    text-align:center;
+    box-shadow:0 5px 20px rgba(0,0,0,0.3);
+}
+
+.card h2{
+    margin-bottom:15px;
+}
+
+.value{
+    font-size:2.5rem;
+    font-weight:bold;
+}
+
+.temp{
+    color:#f97316;
+}
+
+.hum{
+    color:#38bdf8;
+}
+
+.online{
+    color:#22c55e;
+}
+
+.offline{
+    color:#ef4444;
+}
+
+.control{
+    margin-top:30px;
+    background:#1e293b;
+    padding:30px;
+    border-radius:20px;
+    text-align:center;
+}
+
+.switch{
+    position:relative;
+    display:inline-block;
+    width:80px;
+    height:40px;
+    margin-top:20px;
+}
+
+.switch input{
+    opacity:0;
+    width:0;
+    height:0;
+}
+
+.slider{
+    position:absolute;
+    cursor:pointer;
+    top:0;
+    left:0;
+    right:0;
+    bottom:0;
+    background:#ef4444;
+    transition:.4s;
+    border-radius:34px;
+}
+
+.slider:before{
+    position:absolute;
+    content:"";
+    height:30px;
+    width:30px;
+    left:5px;
+    bottom:5px;
+    background:white;
+    transition:.4s;
+    border-radius:50%;
+}
+
+input:checked + .slider{
+    background:#22c55e;
+}
+
+input:checked + .slider:before{
+    transform:translateX(40px);
+}
+
+#fanText{
+    margin-top:20px;
+    font-size:24px;
+    font-weight:bold;
+}
+
+.footer{
+    margin-top:30px;
+    text-align:center;
+    color:#94a3b8;
+}
+
+#lastUpdate{
+    margin-top:10px;
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<div class="header">
+    <h1>🌍 Smart Environment Monitor</h1>
+    <p>ESP32 + Firebase + DHT11 + Fan Control</p>
+</div>
+
+<div class="grid">
+
+    <div class="card">
+        <h2>🌡 Temperature</h2>
+        <div class="value temp" id="temperature">-- °C</div>
+    </div>
+
+    <div class="card">
+        <h2>💧 Humidity</h2>
+        <div class="value hum" id="humidity">-- %</div>
+    </div>
+
+    <div class="card">
+        <h2>📡 Device Status</h2>
+        <div class="value online" id="deviceStatus">Offline</div>
+    </div>
+
+</div>
+
+<div class="control">
+
+    <h2>🌀 Fan Control</h2>
+
+    <label class="switch">
+        <input type="checkbox" id="fanSwitch">
+        <span class="slider"></span>
+    </label>
+
+    <div id="fanText">
+        Fan OFF
+    </div>
+
+    <div id="lastUpdate">
+        Last Update: --
+    </div>
+
+</div>
+
+<div class="footer">
+    Monitor and Control from Anywhere 🌍
+</div>
+
+</div>
+
+<script>
+
+//================ FIREBASE CONFIG =================
+
+const firebaseConfig = {
+
+  apiKey: "AIzaSyATplcP0UBevOshV1ffGO0tnQyxbh27r_Q",
+
+  authDomain: "esp32dht-7e8e9.firebaseapp.com",
+
+  databaseURL: "https://esp32dht-7e8e9-default-rtdb.firebaseio.com",
+
+  projectId: "esp32dht-7e8e9"
+
+};
+
+firebase.initializeApp(firebaseConfig);
+
+const db = firebase.database();
+
+const fanSwitch = document.getElementById("fanSwitch");
+
+//================ TEMPERATURE =================
+
+db.ref("Temperature").on("value",(snapshot)=>{
+
+    document.getElementById("temperature").innerHTML =
+    snapshot.val() + " °C";
+
+});
+
+//================ HUMIDITY =================
+
+db.ref("Humidity").on("value",(snapshot)=>{
+
+    document.getElementById("humidity").innerHTML =
+    snapshot.val() + " %";
+
+});
+
+//================ STATUS =================
+
+db.ref("Status").on("value",(snapshot)=>{
+
+    let status = snapshot.val();
+
+    document.getElementById("deviceStatus").innerHTML =
+    status;
+
+});
+
+//================ FAN STATUS =================
+
+db.ref("Fan").on("value",(snapshot)=>{
+
+    let state = snapshot.val();
+
+    fanSwitch.checked = state == 1;
+
+    document.getElementById("fanText").innerHTML =
+    state == 1 ? "🌀 Fan ON" : "🛑 Fan OFF";
+
+    document.getElementById("lastUpdate").innerHTML =
+    "Last Update: " + new Date().toLocaleTimeString();
+
+});
+
+//================ FAN CONTROL =================
+
+fanSwitch.addEventListener("change",()=>{
+
+    if(fanSwitch.checked)
+    {
+        db.ref("Fan").set(1);
+    }
+    else
+    {
+        db.ref("Fan").set(0);
+    }
+
+});
+
+</script>
+
+</body>
+</html>
